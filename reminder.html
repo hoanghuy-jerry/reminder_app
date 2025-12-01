@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="vi">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>⏰ Reminder Dashboard – LocalStorage + Backup</title>
+    <style>
+        :root {
+            --bg: #0b1220;
+            --card: #101827;
+            --muted: #93a3b8;
+            --text: #e5e7eb;
+            --stroke: #1f2937;
+            --accent: #22d3ee;
+            --accent2: #8b5cf6;
+            --warn: #f59e0b;
+            --bad: #ef4444;
+            --good: #10b981
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        html,
+        body {
+            height: 100%
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, Segoe UI, Inter, Arial, sans-serif;
+            background: linear-gradient(135deg, #0b1220, #0b1220 60%, #111827);
+            color: var(--text)
+        }
+
+        .wrap {
+            max-width: 1024px;
+            margin-inline: auto;
+            padding: 20px
+        }
+
+        h1 {
+            margin: 6px 0 10px;
+            font-size: 26px;
+            font-weight: 800
+        }
+
+        .muted {
+            color: var(--muted)
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--stroke);
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, .25)
+        }
+
+        input,
+        select,
+        textarea,
+        button {
+            font: inherit
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            background: #0f172a;
+            border: 1px solid var(--stroke);
+            color: var(--text);
+            border-radius: 12px;
+            padding: 10px;
+            outline: none
+        }
+
+        textarea {
+            min-height: 72px
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            box-shadow: 0 0 0 3px rgba(34, 211, 238, .15)
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            border: 0;
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-weight: 700;
+            cursor: pointer
+        }
+
+        .btn.ghost {
+            background: #0f172a;
+            border: 1px solid var(--stroke)
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1.2fr .8fr;
+            gap: 16px
+        }
+
+        @media (max-width:900px) {
+            .grid {
+                grid-template-columns: 1fr
+            }
+        }
+
+        .pill {
+            display: inline-block;
+            padding: 2px 8px;
+            border: 1px solid var(--stroke);
+            border-radius: 999px;
+            color: var(--muted);
+            font-size: 12px
+        }
+
+        .list {
+            display: grid;
+            gap: 12px
+        }
+
+        .item {
+            background: #0f172a;
+            border: 1px solid var(--stroke);
+            border-radius: 14px;
+            padding: 12px
+        }
+
+        .meta {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            color: var(--muted);
+            font-size: 12px;
+            margin-bottom: 8px
+        }
+
+        .title {
+            font-weight: 800;
+            font-size: 16px
+        }
+
+        .bad {
+            color: var(--bad)
+        }
+
+        .warn {
+            color: var(--warn)
+        }
+
+        .good {
+            color: var(--good)
+        }
+
+        .countdown {
+            font-weight: 700
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center
+        }
+
+        .kpis {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px
+        }
+
+        .k {
+            background: #0f172a;
+            border: 1px solid var(--stroke);
+            border-radius: 12px;
+            padding: 10px;
+            text-align: center
+        }
+
+        .k h3 {
+            margin: 0;
+            color: var(--muted);
+            font-size: 12px
+        }
+
+        .k .v {
+            font-size: 22px;
+            font-weight: 800
+        }
+
+        .reminder {
+            margin-top: 8px;
+            color: #facc15;
+            font-weight: 600
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <h1>⏰ Reminder Dashboard <span class="muted">(LocalStorage + Backup/Upload)</span></h1>
+        <p>
+            Thêm nhắc nhở theo danh mục (mặc định có “Đăng ký dịch vụ”, “Tiền nước”, bạn có thể tự thêm danh mục khác).
+
+            Chọn hạn (ngày & giờ), ghi ghi chú, xem đếm ngược thời gian còn lại (cảnh báo khi <24h, và báo quá hạn). Tìm
+                kiếm, lọc theo danh mục. Export JSON (backup) và Import JSON (upload) để sao lưu/khôi phục dữ liệu. Chỉ
+                số tổng quan: số việc đang mở, sắp đến hạn 24h, quá hạn. Nhắc bạn backup mỗi 7 ngày. </p>
+                <div class="grid">
+                    <!-- LEFT: CREATE / EDIT -->
+                    <section class="card">
+                        <h2 style="margin:0 0 8px">Thêm nhắc nhở mới</h2>
+                        <div class="row">
+                            <div style="flex:1;min-width:220px">
+                                <label class="muted">Tiêu đề</label>
+                                <input id="title" placeholder="Ví dụ: Đăng ký gói cước, Đóng tiền nước">
+                            </div>
+                            <div style="width:200px">
+                                <label class="muted">Danh mục</label>
+                                <select id="category"></select>
+                            </div>
+                        </div>
+                        <div class="row" style="margin-top:8px">
+                            <div style="width:220px">
+                                <label class="muted">Hạn (ngày & giờ)</label>
+                                <input id="due" type="datetime-local">
+                            </div>
+                            <div style="flex:1;min-width:180px">
+                                <label class="muted">Ghi chú</label>
+                                <input id="note" placeholder="Ghi chú ngắn...">
+                            </div>
+                        </div>
+                        <div class="row" style="margin-top:8px">
+                            <button class="btn" id="saveBtn">Lưu</button>
+                            <button class="btn ghost" id="clearForm">Xóa form</button>
+                            <span id="msg" class="muted"></span>
+                        </div>
+
+                        <h3 style="margin:16px 0 8px">Danh mục tuỳ chỉnh</h3>
+                        <div class="row">
+                            <div style="flex:1;min-width:220px"><input id="newCat"
+                                    placeholder="VD: Hóa đơn, Gia đình, Công việc"></div>
+                            <button class="btn ghost" id="addCatBtn">+ Thêm danh mục</button>
+                        </div>
+                        <p class="muted" style="margin-top:6px">Mặc định có sẵn: <span class="pill">Đăng ký dịch
+                                vụ</span> <span class="pill">Tiền nước</span> <span class="pill">Khác</span>. Bạn có thể
+                            thêm danh mục riêng.
+                        </p>
+                    </section>
+
+                    <!-- RIGHT: TOOLS / KPIs -->
+                    <aside class="card">
+                        <h2 style="margin:0 0 8px">Công cụ & Sao lưu</h2>
+                        <div class="kpis">
+                            <div class="k">
+                                <h3>Đang mở</h3>
+                                <div class="v" id="kOpen">0</div>
+                            </div>
+                            <div class="k">
+                                <h3>Sắp đến hạn (24h)</h3>
+                                <div class="v" id="kSoon">0</div>
+                            </div>
+                            <div class="k">
+                                <h3>Quá hạn</h3>
+                                <div class="v bad" id="kOver">0</div>
+                            </div>
+                        </div>
+                        <div class="toolbar" style="margin-top:10px">
+                            <button class="btn" id="exportBtn">💾 Export JSON</button>
+                            <button class="btn ghost" id="importBtn">📥 Import JSON</button>
+                            <input id="importFile" type="file" accept="application/json" style="display:none" />
+                        </div>
+                        <div class="toolbar" style="margin-top:10px">
+                            <input id="search" placeholder="Tìm theo tiêu đề/ghi chú..." style="flex:1;min-width:180px">
+                            <select id="filterCat" style="width:200px"></select>
+                        </div>
+                        <div id="backupReminder" class="reminder"></div>
+                    </aside>
+                </div>
+
+                <section class="card" style="margin-top:16px">
+                    <h2 style="margin:0 0 8px">Danh sách nhắc nhở</h2>
+                    <div id="items" class="list" aria-live="polite"></div>
+                </section>
+    </div>
+
+    <script>
+        const KEY_ITEMS = 'reminder_items_v1';
+        const KEY_CATS = 'reminder_categories_v1';
+        const KEY_BACKUP = 'reminder_last_backup';
+
+        let items = load(KEY_ITEMS, []);
+        let categories = load(KEY_CATS, ['Đăng ký dịch vụ', 'Tiền nước', 'Khác']);
+
+        // ===== Helpers =====
+        function $(id) { return document.getElementById(id) }
+        function load(key, def) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def } catch { return def } }
+        function save(key, val) { localStorage.setItem(key, JSON.stringify(val)) }
+        function uid() { return Date.now() + "_" + Math.random().toString(36).slice(2, 7) }
+        function fmtDate(dt) { const d = new Date(dt); return d.toLocaleString() }
+        function byId(id) { return document.querySelector(`[data-id="${id}"]`) }
+
+        function msLeft(due) { return new Date(due).getTime() - Date.now() }
+        function humanLeft(ms) {
+            const neg = ms < 0; const a = Math.abs(ms);
+            const d = Math.floor(a / 86400000); const h = Math.floor((a % 86400000) / 3600000); const m = Math.floor((a % 3600000) / 60000);
+            const s = `${d}d ${h}h ${m}m`;
+            return neg ? `Quá ${s}` : `Còn ${s}`;
+        }
+
+        function updateBackupReminder() {
+            const last = Number(localStorage.getItem(KEY_BACKUP) || 0);
+            if (!last) { $('backupReminder').textContent = 'Chưa từng backup! Hãy Export JSON để sao lưu.'; return }
+            const diff = Date.now() - last; const days = Math.floor(diff / 86400000); const left = 7 - days;
+            $('backupReminder').textContent = left <= 0 ? '⚠️ Đã quá 7 ngày chưa backup. Hãy Export JSON.' : `${left} ngày nữa đến kỳ backup.`
+        }
+
+        // ===== UI Init =====
+        function fillCategoryOptions() {
+            const sel = $('category'); sel.innerHTML = '';
+            for (const c of categories) { const o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o); }
+            const fc = $('filterCat'); fc.innerHTML = '';
+            const oAll = document.createElement('option'); oAll.value = ''; oAll.textContent = 'Tất cả danh mục'; fc.appendChild(oAll);
+            for (const c of categories) { const o = document.createElement('option'); o.value = c; o.textContent = c; fc.appendChild(o); }
+        }
+        fillCategoryOptions();
+
+        // Prefill default quick items (optional)
+        if (items.length === 0) {
+            const now = new Date();
+            const in3d = new Date(now.getTime() + 3 * 86400000); // +3 ngày
+            const in5d = new Date(now.getTime() + 5 * 86400000); // +5 ngày
+            items.push({ id: uid(), title: 'Đăng ký gói cước 4G', category: 'Đăng ký dịch vụ', due: in3d.toISOString(), note: 'Gia hạn 1 tháng', done: false, createdAt: new Date().toISOString() });
+            items.push({ id: uid(), title: 'Đóng tiền nước', category: 'Tiền nước', due: in5d.toISOString(), note: 'PN tháng này', done: false, createdAt: new Date().toISOString() });
+            save(KEY_ITEMS, items);
+        }
+
+        $('due').value = new Date(Date.now() + 3600000).toISOString().slice(0, 16); // +1h
+
+        // ===== CRUD =====
+        $('saveBtn').onclick = () => {
+            const title = $('title').value.trim();
+            const category = $('category').value;
+            const due = $('due').value;
+            const note = $('note').value.trim();
+            if (!title || !due) { $('msg').textContent = 'Vui lòng nhập Tiêu đề và Hạn.'; setTimeout(() => $('msg').textContent = '', 1500); return }
+            const obj = { id: uid(), title, category, due: new Date(due).toISOString(), note, done: false, createdAt: new Date().toISOString() };
+            items.unshift(obj); save(KEY_ITEMS, items); render(); clearForm();
+        }
+        $('clearForm').onclick = clearForm;
+        function clearForm() { $('title').value = ''; $('note').value = ''; $('due').value = ''; $('title').focus(); }
+
+        $('addCatBtn').onclick = () => {
+            const v = $('newCat').value.trim(); if (!v) return; if (!categories.includes(v)) { categories.push(v); save(KEY_CATS, categories); fillCategoryOptions(); $('newCat').value = ''; }
+        }
+
+        function delItem(id) { items = items.filter(x => x.id !== id); save(KEY_ITEMS, items); render(); }
+        function toggleDone(id) { const it = items.find(x => x.id === id); if (!it) return; it.done = !it.done; save(KEY_ITEMS, items); render(); }
+
+        // ===== Export / Import =====
+        $('exportBtn').onclick = () => {
+            const payload = { items, categories, exportedAt: new Date().toISOString() };
+            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob); const a = document.createElement('a');
+            a.href = url; a.download = 'reminders-backup.json'; a.click(); URL.revokeObjectURL(url);
+            localStorage.setItem(KEY_BACKUP, Date.now()); updateBackupReminder();
+        }
+        $('importBtn').onclick = () => $('importFile').click();
+        $('importFile').addEventListener('change', async (e) => {
+            const f = e.target.files[0]; if (!f) return; const text = await f.text();
+            try {
+                const obj = JSON.parse(text);
+                if (Array.isArray(obj.items)) items = obj.items; if (Array.isArray(obj.categories)) categories = obj.categories;
+                save(KEY_ITEMS, items); save(KEY_CATS, categories); fillCategoryOptions(); render(); alert('Đã import thành công!');
+            } catch { alert('File JSON không hợp lệ'); }
+            e.target.value = '';
+        });
+
+        // ===== Render =====
+        $('search').addEventListener('input', render);
+        $('filterCat').addEventListener('change', render);
+
+        function render() {
+            // KPIs
+            const now = Date.now();
+            const open = items.filter(x => !x.done).length;
+            const soon = items.filter(x => !x.done && (new Date(x.due).getTime() - now) <= 24 * 3600000 && (new Date(x.due).getTime() - now) > 0).length;
+            const over = items.filter(x => !x.done && (new Date(x.due).getTime() - now) < 0).length;
+            $('kOpen').textContent = open; $('kSoon').textContent = soon; $('kOver').textContent = over;
+
+            const q = $('search').value.toLowerCase();
+            const fc = $('filterCat').value;
+            const box = $('items'); box.innerHTML = '';
+            let view = [...items];
+            view = view.filter(x => (fc ? x.category === fc : true) && (q ? (x.title.toLowerCase().includes(q) || (x.note || '').toLowerCase().includes(q)) : true));
+
+            if (view.length === 0) { box.innerHTML = '<div class="muted">Chưa có nhắc nhở phù hợp.</div>'; return }
+
+            // sort: overdue first, then soonest
+            view.sort((a, b) => new Date(a.due) - new Date(b.due));
+
+            for (const it of view) {
+                const ms = msLeft(it.due);
+                const cls = it.done ? 'good' : ms < 0 ? 'bad' : (ms <= 24 * 3600000 ? 'warn' : '');
+                const div = document.createElement('div'); div.className = 'item'; div.dataset.id = it.id;
+                div.innerHTML = `
+      <div class="meta"><span class="pill">${it.category}</span><span>${fmtDate(it.due)}</span></div>
+      <div class="title">${escapeHTML(it.title)}</div>
+      <div class="muted" style="margin:6px 0">${escapeHTML(it.note || '')}</div>
+      <div class="countdown ${cls}">${it.done ? 'Đã hoàn thành' : humanLeft(ms)}</div>
+      <div class="toolbar" style="margin-top:8px">
+        <button class="btn ghost" data-act="toggle">${it.done ? '↩️ Đánh dấu lại' : '✅ Hoàn thành'}</button>
+        <button class="btn ghost" data-act="del">🗑️ Xóa</button>
+      </div>`;
+                box.appendChild(div);
+            }
+        }
+
+        function escapeHTML(str = '') { return str.replace(/[&<>\"]/g, (s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[s]))) }
+
+        $('items').addEventListener('click', (e) => {
+            const btn = e.target.closest('button'); if (!btn) return; const card = e.target.closest('.item'); if (!card) return;
+            const id = card.dataset.id; const act = btn.getAttribute('data-act');
+            if (act === 'del') { if (confirm('Xóa nhắc nhở này?')) delItem(id); }
+            if (act === 'toggle') { toggleDone(id); }
+        });
+
+        // Live countdown update each 30s
+        setInterval(() => { render() }, 30000);
+
+        updateBackupReminder();
+        render();
+    </script>
+</body>
+
+</html>
